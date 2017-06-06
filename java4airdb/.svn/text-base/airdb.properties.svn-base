@@ -1,8 +1,0 @@
-# AIR DB Connector properties
-airdb.connector.port=4000
-airdb.connector.sql-config=./air-sql-config.xml
-
-
-#Logging settings
-# OFF,SEVERE, WARNING, INFO, CONFIG, FINE, ALL,
-airdb.log.level = INFO
