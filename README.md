@@ -8,6 +8,7 @@ AIR DB Connector for Adobe AIR application that requires to connect local databa
 
 Adobe AIR applications are not able to connect to local database. This library provides API to connect to local database.
 
+Read More on **[this blog](https://myjavaacademy.com/connecting-to-local-database-in-adobe-air/)**
 
 ## Details
 
