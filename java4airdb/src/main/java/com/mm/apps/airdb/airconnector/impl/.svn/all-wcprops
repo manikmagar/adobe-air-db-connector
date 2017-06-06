@@ -1,0 +1,53 @@
+K 25
+svn:wc:ra_dav:version-url
+V 97
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl
+END
+Transporter.java
+K 25
+svn:wc:ra_dav:version-url
+V 114
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/Transporter.java
+END
+SqlTransporter.java
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/SqlTransporter.java
+END
+ClientRegister.java
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/ClientRegister.java
+END
+AirPrintStream.java
+K 25
+svn:wc:ra_dav:version-url
+V 117
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/AirPrintStream.java
+END
+DataProcessor.java
+K 25
+svn:wc:ra_dav:version-url
+V 116
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/DataProcessor.java
+END
+Client.java
+K 25
+svn:wc:ra_dav:version-url
+V 109
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/Client.java
+END
+ClientProcessor.java
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/ClientProcessor.java
+END
+ServerConnector.java
+K 25
+svn:wc:ra_dav:version-url
+V 118
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/src/main/java/com/mm/apps/airdb/airconnector/impl/ServerConnector.java
+END

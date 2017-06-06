@@ -1,0 +1,49 @@
+<sql-config>
+  <connection dsn="javajarusage"/>
+  <queries>
+    <procedure id="get_frameworks_proc">
+      <sql>{ CALL get_frameworks(?,?,?)}</sql>
+      <parameters>
+        <parameter>
+          <name>name</name>
+          <type>VARCHAR</type>
+          <typeVal>12</typeVal>
+        </parameter>
+        <parameter>
+          <name>version</name>
+          <type>VARCHAR</type>
+          <typeVal>12</typeVal>
+        </parameter>
+      </parameters>
+    </procedure>
+    <select id="get_frameworks">
+      <sql>select * from frameworks</sql>
+      <parameters/>
+    </select>
+    <update id="insert_framework">
+      <sql>insert into frameworks (name,version,description,source_url) values (?,?,?,?)</sql>
+      <parameters>
+        <parameter>
+          <name>name</name>
+          <type>VARCHAR</type>
+          <typeVal>12</typeVal>
+        </parameter>
+        <parameter>
+          <name>version</name>
+          <type>VARCHAR</type>
+          <typeVal>12</typeVal>
+        </parameter>
+        <parameter>
+          <name>description</name>
+          <type>VARCHAR</type>
+          <typeVal>12</typeVal>
+        </parameter>
+        <parameter>
+          <name>source_url</name>
+          <type>VARCHAR</type>
+          <typeVal>12</typeVal>
+        </parameter>
+      </parameters>
+    </update>
+  </queries>
+</sql-config>

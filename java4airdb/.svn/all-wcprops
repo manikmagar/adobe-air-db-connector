@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb
+END
+airdb.properties
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/airdb.properties
+END
+build.xml
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/build.xml
+END
+.classpath
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/.classpath
+END
+.project
+K 25
+svn:wc:ra_dav:version-url
+V 56
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/.project
+END
+air-sql-config.xml
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/!svn/ver/27/tags/java4airdb_1.0/java4airdb/air-sql-config.xml
+END

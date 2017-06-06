@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" 
+	layout="vertical" width="1000" height="600"
+	creationComplete="init()" backgroundColor="#CECECE" borderStyle="none" backgroundGradientAlphas="[1.0, 1.0]" 
+	backgroundGradientColors="[#FCEBE6, #A2C1F8]" 
+	fontFamily="Georgia" fontSize="11" paddingTop="10">
+	
+
+	<mx:Script>
+		<![CDATA[
+			import mx.events.ValidationResultEvent;
+			import mx.binding.utils.BindingUtils;
+			import mx.events.ListEvent;
+			import mx.utils.ObjectUtil;
+			import mx.rpc.xml.SimpleXMLDecoder;
+			import mx.controls.Alert;
+			import mx.events.ItemClickEvent;
+			import com.mm.apps.airdb.config.SqlConfig;
+			import com.mm.apps.airdb.config.Query;
+			import mx.rpc.xml.SimpleXMLEncoder;
+			import mx.utils.XMLUtil;
+			import com.mm.apps.airdb.sql.Parameter;
+			import mx.collections.ArrayCollection;
+			[Bindable]
+			private var dpDgParameters:ArrayCollection = new ArrayCollection();
+			
+			[Bindable]
+			private var enableDetail:Boolean = false;
+			
+			[Bindable]
+			private var currentQueryItem:Query;
+			
+			[Bindable]
+			public var currentSqlConfig:SqlConfig;
+			
+			[Bindable]
+			public var sqlTypeValueMap:Object = new Object();
+			
+			[Bindable]
+			public var editStart:Boolean = false;
+			
+			private function init():void{
+				for each (var obj:Object in sqlTypes){
+					sqlTypeValueMap[obj.value] = obj;
+				}
+				BindingUtils.bindProperty(appButtonBar.getChildAt(2),'enabled',this,'editStart');
+			}
+			
+			private var file:File;
+			private function handleOpenConfig(event:Event):void{
+				trace(event.type);
+				file = event.target as File;
+				if(file != null){
+					var inStream:FileStream = new FileStream();
+					inStream.open(file, FileMode.READ);
+					var xmlData:String = inStream.readUTFBytes(inStream.bytesAvailable);
+					
+					var doc:XMLDocument = new XMLDocument(xmlData);
+					
+					var decoder:SimpleXMLDecoder = new SimpleXMLDecoder();
+					var obj:Object = decoder.decodeXML(doc.firstChild);
+					
+					var sqlConfig:SqlConfig = new SqlConfig();
+					var dsn:Object = obj.connection.dsn;
+					sqlConfig.connection.dsnName = dsn.name;
+					sqlConfig.connection.dsnUsername = dsn.username;
+					sqlConfig.connection.dsnPassword = dsn.password;
+					var queries:Object =  ObjectUtil.getClassInfo(obj.queries);
+					var query:Query = null;
+					for each ( var prop:QName in  queries.properties){
+						var val:Object = obj.queries[prop.localName];
+						if(val is Array){
+							for each (var q:Object in val){
+								query = addQuery(q,prop.localName);
+								sqlConfig.queries.addItem(query);
+							}
+						} else {
+							query = addQuery(val,prop.localName);
+							sqlConfig.queries.addItem(query);	
+						}	
+					}
+					
+					this.currentSqlConfig = sqlConfig;
+					this.dgQueries.selectedIndex = 0;
+					this.dgQueries.dispatchEvent(new ListEvent(ListEvent.ITEM_CLICK));
+					editStart = true;
+				}
+			}
+			private function addQuery(obj:Object,type:String):Query{
+				var query:Query = new Query();
+				query.sql = obj.sql;
+				query.queryId = obj.id;
+				query.queryType = type;
+				if(obj.parameters){
+					var params:Object = obj.parameters.parameter;
+					if(params is Array){
+						for each (var p:Object in params){
+							addParam(query, p);
+						}
+					} else {
+						addParam(query,params);
+					}	
+				}
+				return query;
+			}
+			private function addParam(query:Query, param:Object):void{
+				var p:Parameter = new Parameter();
+				p.name = param.name;
+				p.type = param.type;
+				p.typeVal = param.typeVal;
+				query.parameters.addItem(p);
+			}
+			private function handleAppBar(event:ItemClickEvent):void{
+				switch(event.index){
+					case 0: // New Config
+						currentSqlConfig = new SqlConfig();
+						currentQueryItem = null;
+						editStart = true;
+						break;
+					case 1: // Open Config
+						file = new File();
+						file.addEventListener(Event.SELECT, handleOpenConfig);
+						file.addEventListener(Event.COMPLETE, handleOpenConfig);
+						file.browseForOpen("Select sql configuration file",[new FileFilter('XML File','*.xml')]);
+						break;
+					case 2: // Generate XML
+					
+						reqValidator.source = dsnName;
+						var valEvent:ValidationResultEvent = reqValidator.validate();
+						if(valEvent.type == ValidationResultEvent.INVALID){
+							Alert.show("Please specify DSN name");
+							return;
+						}
+						
+						if(this.currentSqlConfig.queries.length <= 0){
+							Alert.show("Atleast one query must be added");
+							return;
+						}
+					
+						var file:File = File.desktopDirectory.resolvePath("sql-config.xml");
+						var outStream:FileStream = new FileStream();
+						outStream.open(file,FileMode.WRITE);
+						outStream.writeUTFBytes(this.currentSqlConfig.toXml());
+						outStream.close();
+						this.currentSqlConfig = null;
+						this.currentQueryItem = null;
+						editStart = false;
+						Alert.show("Configuration is saved at "+file.nativePath);
+						break;
+					
+					default:
+					
+				}
+			}
+			private var currentQueryAction:int = 3;
+			private function handleQuery(event:ItemClickEvent):void{
+				currentQueryAction = event.index;
+				switch(event.index){
+					case 0:	// ADD
+						currentQueryItem = new Query();
+						currentQueryItem.queryId = "Query"+ (this.currentSqlConfig.queries.length+1);
+						enableDetail = true;
+//						this.currentSqlConfig.queries.addItem(currentQueryItem);
+						break;
+					 /* case 1: // EDIT
+						currentQueryItem = dgQueries.selectedItem as Query;
+						enableDetail = true;
+						break; */ 
+					case 1: // Delete
+						this.currentSqlConfig.queries.removeItemAt(dgQueries.selectedIndex);
+						currentQueryItem = null;
+						break;
+					default:
+				}
+			}
+			
+			private function handleSaveQuery(event:Event):void{
+				
+				if(queryId.errorString != null && queryId.errorString != ""){
+					Alert.show(queryId.errorString);
+					return;
+				}
+				
+				reqValidator.source = queryId;
+				var valEvent:ValidationResultEvent = reqValidator.validate();
+				if(valEvent.type == ValidationResultEvent.INVALID){
+					Alert.show("Please enter query query ID");
+					return;
+				}
+				
+				reqValidator.source = sql;
+				valEvent = reqValidator.validate();
+				if(valEvent.type == ValidationResultEvent.INVALID){
+					Alert.show("Please enter query SQL");
+					return;
+				}
+				if(currentQueryAction == 0){
+					this.currentSqlConfig.queries.addItem(this.currentQueryItem);	
+				}
+				this.currentQueryItem = null;
+				enableDetail = false;	
+			}
+			
+			private function handleParams(event:ItemClickEvent):void{
+				switch(event.index){
+					case 0: // ADD
+						var p:Parameter = new Parameter();
+						this.currentQueryItem.parameters.addItem(p);
+						break;
+					case 1: // Delete
+						this.currentQueryItem.parameters.removeItemAt(dgParameters.selectedIndex);
+						break;
+					default:
+				}
+			}
+			
+			private function handleItemClick(event:Event):void{
+				if(this.dgQueries.selectedItem != null){
+					this.currentQueryItem = this.dgQueries.selectedItem as Query;
+					for each (var obj:Object in queryTypeCombo.dataProvider){
+						if(obj.value == this.currentQueryItem.queryType){
+							queryTypeCombo.selectedItem = obj;
+							break;
+						}
+					} 
+				}
+			}
+			
+			private function handleQueryIdChange(event:Event):void{
+				if(!currentSqlConfig.queryIdMap.contains(queryId.text)){
+					currentQueryItem.queryId = queryId.text;
+					queryId.errorString = null;
+				} else {
+//					queryId.text = "";
+//					currentQueryItem.queryId = "";
+					queryId.errorString = "Query Id already exists, it must be unique.";
+				}
+			}
+			
+			private function handleDoubleClick(event:Event):void{
+				currentQueryItem = dgQueries.selectedItem as Query;
+				enableDetail = true;
+			}
+		]]>
+	</mx:Script>
+
+	
+	<mx:StringValidator id="reqValidator" required="true" property="text"/>
+		
+
+	<mx:XMLList id="menuXml" xmlns="">
+		<menuitem label="File">
+			<menuitem label="New" data="New"/>
+			<menuitem label="Open" data="Open"/>
+			<menuitem label="Save" data="Save"/>
+			<menuitem label="Exit" data="Exit"/>
+		</menuitem>
+	</mx:XMLList>
+	
+	<mx:Array id="sqlTypes">
+		<mx:Object id='typeBIT' label='BIT' value='-7'/>
+		<mx:Object id='typeTINYINT' label='TINYINT' value='-6'/>
+		<mx:Object id='typeSMALLINT' label='SMALLINT' value='5'/>
+		<mx:Object id='typeINTEGER' label='INTEGER' value='4'/>
+		<mx:Object id='typeBIGINT' label='BIGINT' value='-5'/>
+		<mx:Object id='typeFLOAT' label='FLOAT' value='6'/>
+		<mx:Object id='typeREAL' label='REAL' value='7'/>
+		<mx:Object id='typeDOUBLE' label='DOUBLE' value='8'/>
+		<mx:Object id='typeNUMERIC' label='NUMERIC' value='2'/>
+		<mx:Object id='typeDECIMAL' label='DECIMAL' value='3'/>
+		<mx:Object id='typeCHAR' label='CHAR' value='1'/>
+		<mx:Object id='typeVARCHAR' label='VARCHAR' value='12'/>
+		<mx:Object id='typeLONGVARCHAR' label='LONGVARCHAR' value='-1'/>
+		<mx:Object id='typeDATE' label='DATE' value='91'/>
+		<mx:Object id='typeTIME' label='TIME' value='92'/>
+		<mx:Object id='typeTIMESTAMP' label='TIMESTAMP' value='93'/>
+		<mx:Object id='typeBINARY' label='BINARY' value='-2'/>
+		<mx:Object id='typeVARBINARY' label='VARBINARY' value='-3'/>
+		<mx:Object id='typeLONGVARBINARY' label='LONGVARBINARY' value='-4'/>
+		<mx:Object id='typeNULL' label='NULL' value='0'/>
+		<mx:Object id='typeOTHER' label='OTHER' value='1111'/>
+		<mx:Object id='typeJAVA_OBJECT' label='JAVA_OBJECT' value='2000'/>
+		<mx:Object id='typeDISTINCT' label='DISTINCT' value='2001'/>
+		<mx:Object id='typeSTRUCT' label='STRUCT' value='2002'/>
+		<mx:Object id='typeARRAY' label='ARRAY' value='2003'/>
+		<mx:Object id='typeBLOB' label='BLOB' value='2004'/>
+		<mx:Object id='typeCLOB' label='CLOB' value='2005'/>
+		<mx:Object id='typeREF' label='REF' value='2006'/>
+		<mx:Object id='typeDATALINK' label='DATALINK' value='70'/>
+		<mx:Object id='typeBOOLEAN' label='BOOLEAN' value='16'/>
+		<mx:Object id='typeROWID' label='ROWID' value='-8'/>
+		<mx:Object id='typeNCHAR' label='NCHAR' value='-15'/>
+		<mx:Object id='typeNVARCHAR' label='NVARCHAR' value='-9'/>
+		<mx:Object id='typeLONGNVARCHAR' label='LONGNVARCHAR' value='-16'/>
+		<mx:Object id='typeNCLOB' label='NCLOB' value='2011'/>
+		<mx:Object id='typeSQLXML' label='SQLXML' value='2009'/>
+	</mx:Array>
+		
+	<mx:ApplicationControlBar dock="true" fillAlphas="[1.0, 1.0]" fillColors="[#BBB2B2, #E9C7DB]">
+		<mx:ButtonBar id="appButtonBar" horizontalGap="5" itemClick="handleAppBar(event)">
+			<mx:dataProvider>
+				<mx:Array>
+					<mx:String>New Config</mx:String>
+					<mx:String>Open Config</mx:String>
+					<mx:String>Generate XML</mx:String>	
+				</mx:Array>
+			</mx:dataProvider>
+		</mx:ButtonBar>
+	</mx:ApplicationControlBar>
+	<mx:HBox width="100%" height="100%" enabled="{editStart}">
+		<mx:Form width="50%" height="100%">
+			<mx:FormHeading label="Sql Configuration"/>
+			<mx:FormItem label="DSN Name">
+				<mx:TextInput id="dsnName" width="200" text="{this.currentSqlConfig.connection.dsnName}" change="{this.currentSqlConfig.connection.dsnName = dsnName.text}"/>
+			</mx:FormItem>
+			<mx:FormItem label="DSN Username">
+				<mx:TextInput id="dsnUsername" width="200" text="{this.currentSqlConfig.connection.dsnUsername}" change="{this.currentSqlConfig.connection.dsnUsername = dsnUsername.text}"/>
+			</mx:FormItem>
+			<mx:FormItem label="DSN Password">
+				<mx:TextInput id="dsnPassword" width="200" text="{this.currentSqlConfig.connection.dsnPassword}" change="{this.currentSqlConfig.connection.dsnPassword = dsnPassword.text}"/>
+			</mx:FormItem>
+			
+			<mx:FormItem label="SQL Queries" width="100%" height="100%">
+				<mx:HBox width="100%" height="100%">
+					<mx:DataGrid id="dgQueries" dataProvider="{currentSqlConfig.queries}" variableRowHeight="true" width="100%"
+						itemClick="handleItemClick(event)" height="100%" doubleClickEnabled="true" doubleClick="handleDoubleClick(event)">
+						<mx:columns>
+							<mx:DataGridColumn id="colQueryId" headerText="Id" dataField="queryId" width="100"/>
+							<mx:DataGridColumn id="colQueryType" headerText="Type" dataField="queryType" width="80"/>
+<!--						<mx:DataGridColumn id="colSql" headerText="SQL" dataField="sql" wordWrap="true"/>
+							<mx:DataGridColumn id="colParams" headerText="Parameters" sortable="false" dataField="parameters">
+								<mx:itemRenderer>
+									<mx:Component>
+										<mx:DataGrid backgroundAlpha="0" dataProvider="{data.parameters}">
+											<mx:columns>
+												<mx:DataGridColumn id="colParamName" dataField="paramName"/>
+												<mx:DataGridColumn id="colParamType" dataField="paramType"/>
+											</mx:columns>
+										</mx:DataGrid>
+									</mx:Component>
+								</mx:itemRenderer>
+							</mx:DataGridColumn>-->
+						</mx:columns>
+					</mx:DataGrid>
+					<mx:ButtonBar horizontalGap="5" paddingRight="5" paddingTop="5" itemClick="handleQuery(event)" 
+						direction="vertical" verticalGap="5" width="41" mouseOver="{this.status = 'Add/Remove Query'}" mouseOut="{this.status = ''}">
+						<mx:dataProvider>
+							<mx:Array>
+								<mx:String>+</mx:String>
+								<mx:String>-</mx:String>
+								<!--<mx:String>Delete</mx:String>-->
+							</mx:Array>
+						</mx:dataProvider>	
+					</mx:ButtonBar>
+				</mx:HBox>
+			</mx:FormItem>
+		</mx:Form>
+		
+		<mx:VBox id="detailForm" width="50%" height="100%" enabled="{enableDetail}">
+			<mx:Form width="100%" height="100%">
+				<mx:FormItem label="Query Id">
+					<mx:TextInput id="queryId" width="200" text="{currentQueryItem.queryId}" change="handleQueryIdChange(event)"/>
+				</mx:FormItem>
+				<mx:FormItem label="Query Type">
+					<mx:ComboBox id="queryTypeCombo" labelField="label" change="{this.currentQueryItem.queryType = this.queryTypeCombo.selectedItem.value}">
+						<mx:dataProvider>
+							<mx:Array>
+								<mx:Object id="selectQuery" label="Select" value="select"/>
+								<mx:Object id="updateQuery" label="Insert/Update" value="update"/>
+								<mx:Object id="procedureQuery" label="Proc/Function" value="procedure"/>
+							</mx:Array>
+						</mx:dataProvider>
+					</mx:ComboBox>
+				</mx:FormItem>
+				<mx:FormItem label="SQL" width="100%" height="30%">
+					<mx:TextArea id="sql" width="100%" text="{currentQueryItem.sql}" change="{currentQueryItem.sql = sql.text}"
+						height="100%"/>
+				</mx:FormItem>
+				<mx:FormItem label="Parameters" height="50%" width="100%">
+					<mx:HBox width="100%" horizontalGap="1" height="100%">
+						<mx:DataGrid id="dgParameters" dataProvider="{currentQueryItem.parameters}" 
+							width="100%" height="100%" rowHeight="25" editable="true">
+							<mx:columns>
+								<mx:DataGridColumn id="colName" headerText="Name" dataField="name" rendererIsEditor="true" editorDataField="text">
+									<mx:itemRenderer>
+										<mx:Component>
+											<mx:TextInput width="100%" height="100%" text="{data.name}"/>
+										</mx:Component>
+									</mx:itemRenderer>
+								</mx:DataGridColumn>
+								<mx:DataGridColumn id="colType" headerText="Type" dataField="type" rendererIsEditor="true" editorDataField="val">
+									<mx:itemRenderer>
+										<mx:Component>
+											<mx:VBox width="100%" horizontalScrollPolicy="off">
+												<mx:Script>
+													<![CDATA[
+														import mx.utils.ArrayUtil;
+														
+														[Bindable]
+														public var val:String = "";
+														
+														override public function set data(value:Object):void{
+															super.data = value;
+															if(value != null){
+																var currItem:Object = outerDocument.sqlTypeValueMap[value.typeVal];
+																sqlTypCombo.selectedItem = currItem;
+															} else {
+																sqlTypCombo.selectedIndex = 0;
+															}
+														}
+														
+														private function handleChange(event:Event):void{
+															val = sqlTypCombo.selectedItem.label; 
+															data.typeVal = sqlTypCombo.selectedItem.value
+														}
+													]]>
+												</mx:Script>
+												<mx:ComboBox width="100%" height="100%" id="sqlTypCombo" dataProvider="{outerDocument.sqlTypes}" change="handleChange(event)"/>
+											</mx:VBox>
+										</mx:Component>
+									</mx:itemRenderer>
+								</mx:DataGridColumn>
+							</mx:columns>
+						</mx:DataGrid>
+						<mx:ButtonBar direction="vertical" itemClick="handleParams(event)">
+							<mx:dataProvider>
+								<mx:Array>
+									<mx:String>+</mx:String>
+									<mx:String>-</mx:String>
+								</mx:Array>
+							</mx:dataProvider>	
+						</mx:ButtonBar>
+					</mx:HBox>
+				</mx:FormItem>
+				<mx:FormItem horizontalAlign="right" width="100%">
+					<mx:Button id="saveButton" label="Save Query" click="handleSaveQuery(event)"/>
+				</mx:FormItem>
+			</mx:Form>
+			
+		</mx:VBox>
+	</mx:HBox>
+</mx:WindowedApplication>
